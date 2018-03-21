@@ -1,0 +1,120 @@
+---
+title: "Curve fitting"
+author: "Jack Brookes"
+date: "21 March 2018"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, dev.args = list(type = "cairo"), error = TRUE) 
+```
+
+Info from [here](http://www.css.cornell.edu/faculty/dgr2/teach/R/R_CurveFit.pdf).
+
+## Create example data
+
+Create data from a function `y = a * e^(b * x) + c + noise`.
+
+```{r message=FALSE, warning=FALSE}
+# tibbles instead of data.frame for cleaner syntax
+# includes ggplot2
+library(tidyverse) 
+
+a <- 23.7
+b <- -0.01
+c <- 37.9
+
+set.seed(1) #reproducible
+
+example_data <- tibble(
+  x = 1:500,
+  y = a * exp(b * x) + c + rnorm(500, 0, 5)
+)
+
+g <- ggplot(example_data, aes(x, y)) + 
+  geom_point(alpha = .2) + 
+  expand_limits(x = 0, y = 0)
+
+g
+```
+
+## Exponential fit
+
+Here we will use the `nls` (Nonlinear Least Squares) function to estimate some parameters for an exponential model. We will assume the form `y = a * e^(b * x) + c`. We can set the trace to `TRUE` to see how the algorithm attempts to find the parameters. We could also use `lower` and `upper` parameters to set bounds on our estimates of the coefficients (run `?nls`).
+
+```{r}
+exp_model <- nls(y ~ a * exp(b * x) + c, data = example_data, start = list(a = 1, b = 1, c = 1), trace = TRUE)
+```
+
+The algorithm didn't find a solution, we need to provide better initial estimates. If we look at the graph, we can see some kind of floor effect at high values of `x`, where the floor is around `y = 40`. So we can make a guess of `c = 40`. Then, at `x = 0`, it looks like `y ~= 60`. If we put these into our formula (`60 = a * e^(b * 0) + 40`) we get `a = 20`. We also know that the value of `y` decreases as `x` increases, so `b` must be negative. Now we try these new guesses:
+
+```{r}
+exp_model <- nls(y ~ a * exp(b * x) + c, data = example_data, start = list(a = 20, b = -1, c = 40), trace = TRUE)
+```
+
+We still get an error. If you plot our assumed formula in something like [Desmos](https://www.desmos.com/calculator/40leuwa8mx), the graph looks very different to ours, it is very steep. So we can try a smaller gradient (`b`).
+
+```{r}
+exp_model <- nls(y ~ a * exp(b * x) + c, data = example_data, start = list(a = 20, b = -0.1, c = 40), trace = TRUE)
+```
+
+It converged and found the three values.
+
+```{r}
+summary(exp_model)
+```
+
+
+## Power fit
+
+Same approach... `I()` is used here because `^` has a special meaning in a stats formula, but we want to use its mathematical meaning ("to the power of"). We assume a power formula (`y = a * x^b + c`). It's more difficult to guess the initial values here. In this formula, `c` is the y-intercept, so we could first guess `c = 60`.
+
+```{r}
+pow_model <- nls(y ~ a * I(x ^ b) + c, data = example_data, start = list(a = 1, b = 1, c = 60), trace = TRUE)
+```
+
+This looks like it worked. We can verify and play around [here](https://www.desmos.com/calculator/ueecjzmmbw).
+
+
+## Compare
+
+
+Lets plot the two models on top of our original graph.
+We can extract the coefficients to out model using `coef()` and converting to a list for easier access. Then we can use that to create a smooth line for both models.
+
+```{r}
+exp_coeffs <- as.list(coef(exp_model))
+
+exp_line <- tibble(
+  model = "exp",
+  x = 1:500,
+  y = exp_coeffs$a * exp(exp_coeffs$b * x) + exp_coeffs$c
+)
+
+exp_coeffs
+```
+
+```{r}
+pow_coeffs <- as.list(coef(pow_model))
+
+pow_line <- tibble(
+  model = "pow",
+  x = 1:500,
+  y = pow_coeffs$a * x ^ pow_coeffs$b + pow_coeffs$c
+)
+
+pow_coeffs
+```
+
+Add the lines to the plot
+
+```{r}
+g + 
+  geom_line(
+    aes(x, y, color = model),
+    data = bind_rows(exp_line, pow_line),
+    size = 1.5,
+    linetype = "dashed"
+  )
+```
+
