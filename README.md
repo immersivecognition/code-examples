@@ -3,8 +3,7 @@
 [Curve fitting in R](http://immersivecognition.github.io/code-examples/curve_fitting/)
 
 
-[Bayes analysis for differences between condition means]
-(http://immersivecognition.github.io/code-examples/simple_bayes/)
+[Bayes analysis for differences between condition means](http://immersivecognition.github.io/code-examples/simple_bayes/)
 
 
 ## Adding examples
