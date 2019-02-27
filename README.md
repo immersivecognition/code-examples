@@ -1,4 +1,4 @@
-﻿# Immersive Congition Code Examples
+﻿# Immersive Cognition Code Examples
 
 [Curve fitting in R](http://immersivecognition.github.io/code-examples/curve_fitting/)
 
